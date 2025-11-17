@@ -1,3 +1,42 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Pixelify+Sans:wght@400;500;600;700&family=VT323&family=Poppins:wght@400;500;600;700&display=swap');
+
+@theme {
+  --font-family-p-regular-400: "Poppins", sans-serif;
+  --font-family-arcade: "Press Start 2P", monospace;
+  --font-family-pixel-regular: "Pixelify Sans", monospace;
+  --font-family-pixel-medium: "Pixelify Sans", monospace;
+  --font-family-pixel-semibold: "Pixelify Sans", monospace;
+  --font-family-pixel-bold: "Pixelify Sans", monospace;
+  --font-family-terminal: "VT323", monospace;
+
+  --color-primary: #0A0E27;
+  --color-secondary: #00FFFF;
+  --color-accent: #00FF00;
+  --color-warning: #FFFF00;
+  --color-destructive: #FF0000;
+  --color-white: #FFFFFF;
+  --color-grey: #808080;
+  --color-grey-100: #C0C0C0;
+  --color-grey-200: #404040;
+  --color-score: #00FF00;
+  --color-qualified: #00FFFF;
+  --color-reward: #FFD700;
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+  
+  .neon-glow {
+    text-shadow: 0 0 10px currentColor, 0 0 20px currentColor, 0 0 30px currentColor;
+  }
+  
+  .neon-glow-box {
+    box-shadow: 0 0 10px currentColor, 0 0 20px currentColor, 0 0 30px currentColor;
+  }
+}
