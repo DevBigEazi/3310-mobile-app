@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "snake3310",
+    "name": "3310",
     "slug": "snake3310",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -11,6 +11,7 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.devbigeazi.snake3310",
+      "targetName": "3310snake",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
       }
@@ -18,9 +19,9 @@
     "android": {
       "adaptiveIcon": {
         "backgroundColor": "#0A0E27",
-        "foregroundImage": "",
-        "backgroundImage": "",
-        "monochromeImage": ""
+        "foregroundImage": "./assets/images/logo.png",
+        "backgroundImage": "./assets/images/logo.png",
+        "monochromeImage": "./assets/images/logo.png"
       },
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
@@ -35,7 +36,7 @@
       [
         "expo-splash-screen",
         {
-          "image": "./assets/icons/splash-icon.png",
+          "image": "./assets/images/logo.png",
           "imageWidth": 200,
           "resizeMode": "contain",
           "backgroundColor": "#0A0E27",
@@ -52,7 +53,7 @@
     "extra": {
       "router": {},
       "eas": {
-        "projectId": "7c44a8a0-e9a8-4171-ab69-0482a78d5d24"
+        "projectId": "c029fb01-5f3a-453a-b0b0-2d85c73f252b"
       }
     }
   }
