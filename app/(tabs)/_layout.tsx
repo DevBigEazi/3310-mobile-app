@@ -21,7 +21,7 @@ const COLORS = {
   background: "#808080",
 } as const;
 
-const TAB_BAR_HEIGHT = Platform.select({ default: 70 });
+const TAB_BAR_HEIGHT = Platform.select({ ios: 70, default: 80 });
 
 // Tab Configuration
 const TABS: TabConfig[] = [

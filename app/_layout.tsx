@@ -1,6 +1,8 @@
 import { Stack } from "expo-router";
 import "./global.css";
 import { useFonts } from "expo-font";
+import React from "react";
+import { ThirdwebProvider } from "thirdweb/react";
 
 export default function RootLayout() {
   const [loaded] = useFonts({
@@ -25,9 +27,11 @@ export default function RootLayout() {
   }
 
   return (
-    <Stack>
-      <Stack.Screen name="index" options={{ headerShown: false }} />
-      <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-    </Stack>
+    <ThirdwebProvider>
+      <Stack>
+        <Stack.Screen name="index" options={{ headerShown: false }} />
+        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+      </Stack>
+    </ThirdwebProvider>
   );
 }

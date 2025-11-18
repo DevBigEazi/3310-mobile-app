@@ -1,16 +1,16 @@
 {
   "expo": {
-    "name": "3310",
-    "slug": "3310",
+    "name": "snake3310",
+    "slug": "snake3310",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icons/icon.png",
-    "scheme": "3310",
+    "scheme": "snake3310",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.devbigeazi.3310",
+      "bundleIdentifier": "com.devbigeazi.snake3310",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
       }
@@ -23,7 +23,8 @@
         "monochromeImage": ""
       },
       "edgeToEdgeEnabled": true,
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "package": "com.bigeazi.snake3310"
     },
     "web": {
       "output": "static",
@@ -51,7 +52,7 @@
     "extra": {
       "router": {},
       "eas": {
-        "projectId": "94c0d634-92f2-46cf-9931-88b49dd6e0de"
+        "projectId": "7c44a8a0-e9a8-4171-ab69-0482a78d5d24"
       }
     }
   }
