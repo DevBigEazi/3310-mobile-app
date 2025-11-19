@@ -116,7 +116,7 @@ export default function Onboarding() {
             {step === 1 && (
               <TouchableOpacity
                 className="flex-1 bg-qualified rounded-lg py-3 items-center active:bg-warning"
-                onPress={() => router.push("/signIn")}
+                onPress={() => router.push("/(auth)/sign-in")}
               >
                 <Text className="font-pixel_semibold text-primary text-base">
                   Play Now 🎮
