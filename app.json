@@ -1,31 +1,35 @@
 {
   "expo": {
     "name": "3310",
-    "slug": "snake3310",
+    "slug": "play3310",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/icons/icon.png",
-    "scheme": "snake3310",
+    "icon": "./assets/icons/app-icon.png",
+    "scheme": "play3310",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.devbigeazi.snake3310",
-      "targetName": "3310snake",
+      "bundleIdentifier": "com.devbigeazi.play3310",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
+      },
+      "splash": {
+        "image": "./assets/icons/splash-icon.png",
+        "resizeMode": "contain",
+        "backgroundColor": "#0A0E27"
       }
     },
     "android": {
       "adaptiveIcon": {
         "backgroundColor": "#0A0E27",
-        "foregroundImage": "./assets/images/logo.png",
-        "backgroundImage": "./assets/images/logo.png",
-        "monochromeImage": "./assets/images/logo.png"
+        "foregroundImage": "./assets/icons/splash-icon.png",
+        "backgroundImage": "./assets/icons/splash-icon.png",
+        "monochromeImage": "./assets/icons/splash-icon.png"
       },
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
-      "package": "com.bigeazi.snake3310"
+      "package": "com.bigeazi.play3310"
     },
     "web": {
       "output": "static",
@@ -36,13 +40,9 @@
       [
         "expo-splash-screen",
         {
-          "image": "./assets/images/logo.png",
-          "imageWidth": 200,
-          "resizeMode": "contain",
-          "backgroundColor": "#0A0E27",
-          "dark": {
-            "backgroundColor": "#000000"
-          }
+          "image": "./assets/icons/splash-icon.png",
+          "resizeMode": "cover",
+          "backgroundColor": "#0A0E27"
         }
       ]
     ],
@@ -53,7 +53,7 @@
     "extra": {
       "router": {},
       "eas": {
-        "projectId": "c029fb01-5f3a-453a-b0b0-2d85c73f252b"
+        "projectId": "a390d93a-78fe-4a29-9bf9-8d0385ced1e5"
       }
     }
   }
