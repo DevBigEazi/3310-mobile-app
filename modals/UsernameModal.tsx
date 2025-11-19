@@ -1,13 +1,13 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState } from 'react';
 import {
-  View,
-  Text,
-  TouchableOpacity,
-  TextInput,
-  ScrollView,
   ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
+  ScrollView,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -33,10 +33,10 @@ const UsernameModal: React.FC<{
             <View className="items-center">
               {/* Header */}
               <Text
-              className="mb-4 text-base font-arcade text-secondary"
+              className="mb-4 text-base leading-6 font-arcade text-secondary"
               style={{ textShadowColor: "#00FFFF", textShadowRadius: 10 }}
             >
-              Welcome, choose your username.
+              WELCOME, COMPLETE YOUR ONBOARDING AND START HAVING FUN.
             </Text>
   
               {/* Username Input Box */}
