@@ -1,4 +1,4 @@
-import { client } from '@/thirdwebClient'
+import { client } from '@/config/thirdwebClient'
 import { useCallback, useState } from 'react'
 import { celo } from 'thirdweb/chains'
 import { useActiveAccount, useConnect } from 'thirdweb/react-native'
@@ -167,8 +167,6 @@ export const useAppleAuth = () => {
       setLoading(true)
       clearError()
 
-      console.log('Attempting Apple login')
-
       await wallet.connect({
         client,
         chain: celo,
@@ -176,7 +174,6 @@ export const useAppleAuth = () => {
       })
       await connect(wallet)
 
-      console.log('Apple login successful')
       handleAuthSuccess()
       setLoading(false)
     } catch (error: any) {
@@ -204,7 +201,6 @@ export const useAppleAuth = () => {
         details: error
       }
       
-      console.log('Setting auth error:', authError)
       setError(authError)
       setLoading(false)
     }
@@ -272,15 +268,12 @@ export const useEmailAuth = (): UseEmailAuthReturn => {
       setLoading(true)
       clearError()
 
-      console.log('Sending email code to:', email)
-
       await preAuthenticate({
         client,
         strategy: "email",
         email: email,
       })
       
-      console.log('Email code sent successfully')
       setEmailSent(true)
       setLoading(false)
       return true
@@ -320,13 +313,7 @@ export const useEmailAuth = (): UseEmailAuthReturn => {
       setLoading(true)
       clearError()
 
-      console.log('Attempting email login with:', email, verificationCode)
-      console.log('Code length:', verificationCode.length)
-      console.log('Code type:', typeof verificationCode)
-
-      // Validate code is 6 digits
       if (!verificationCode) {
-        console.log('No verification code provided')
         const authError: AuthError = {
           code: 'INVALID_CODE',
           message: 'Please enter the verification code.',
@@ -339,7 +326,6 @@ export const useEmailAuth = (): UseEmailAuthReturn => {
       const trimmedCode = verificationCode.trim()
       
       if (trimmedCode.length !== 6) {
-        console.log('Invalid code length:', trimmedCode.length)
         const authError: AuthError = {
           code: 'INVALID_CODE',
           message: `Verification code must be 6 digits. You entered ${trimmedCode.length} characters.`,
@@ -350,7 +336,6 @@ export const useEmailAuth = (): UseEmailAuthReturn => {
       }
 
       if (!/^\d{6}$/.test(trimmedCode)) {
-        console.log('Code contains non-digits')
         const authError: AuthError = {
           code: 'INVALID_CODE',
           message: 'Verification code must contain only numbers.',
@@ -359,8 +344,6 @@ export const useEmailAuth = (): UseEmailAuthReturn => {
         setLoading(false)
         return false
       }
-
-      console.log('Connecting wallet with code:', trimmedCode)
 
       await wallet.connect({
         client,
@@ -372,7 +355,6 @@ export const useEmailAuth = (): UseEmailAuthReturn => {
       
       await connect(wallet)
 
-      console.log('Email login successful')
       handleAuthSuccess()
       setLoading(false)
       return true
@@ -403,7 +385,6 @@ export const useEmailAuth = (): UseEmailAuthReturn => {
         details: error
       }
 
-      console.log('Setting auth error:', authError)
       setError(authError)
       setLoading(false)
       return false
