@@ -10,6 +10,8 @@ import { Alert } from 'react-native';
 import { useActiveAccount } from 'thirdweb/react-native';
 import { getUserEmail } from "thirdweb/wallets/in-app";
 
+const SERVER_BEARER = process.env.EXPO_PUBLIC_SERVER_BEARER;
+
 interface ModalState {
   type: 'login' | 'email-verification' | 'username';
   email?: string;
@@ -146,7 +148,10 @@ const SignIn: React.FC = () => {
 
       const response = await fetch(`${API_BASE_URL}/api/player`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          Authorization: `Bearer ${SERVER_BEARER}`,
+          "Content-Type": "application/json",
+        },
         body: JSON.stringify(payload),
       });
 
