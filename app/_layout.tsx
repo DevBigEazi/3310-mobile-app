@@ -3,6 +3,7 @@ import "./global.css";
 import { useFonts } from "expo-font";
 import React from "react";
 import { ThirdwebProvider } from "thirdweb/react";
+import { Platform, StatusBar } from "react-native";
 
 export default function RootLayout() {
   const [loaded] = useFonts({
@@ -29,6 +30,9 @@ export default function RootLayout() {
   return (
     <ThirdwebProvider>
       <Stack>
+      <StatusBar
+        barStyle={Platform.OS === "ios" ? "light-content" : "default"}
+      />
         <Stack.Screen name="index" options={{ headerShown: false }} />
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         <Stack.Screen name="(auth)" options={{ headerShown: false }} />

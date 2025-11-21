@@ -130,7 +130,7 @@ const SignIn: React.FC = () => {
   };
 
   // ==================== USERNAME MODAL ====================
-  const handleUsernameComplete = async (username: string) => {
+  const handleUsernameComplete = async (username: string, referralCode?: string) => {
     if (!activeAccount) {
       Alert.alert('Error', 'Wallet not connected');
       return;
@@ -144,6 +144,7 @@ const SignIn: React.FC = () => {
         address: activeAccount.address,
         username,
         email: userEmail || 'unknown',
+        referralCode: referralCode,
       };
 
       const response = await fetch(`${API_BASE_URL}/api/player`, {

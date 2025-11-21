@@ -1,11 +1,10 @@
-import { Redirect, Tabs } from "expo-router";
+import {  Tabs } from "expo-router";
 import React from "react";
-import { StatusBar, Platform } from "react-native";
+import { StatusBar, Platform, View } from "react-native";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import AntDesign from "@expo/vector-icons/AntDesign";
 import Octicons from "@expo/vector-icons/Octicons";
 import Ionicons from "@expo/vector-icons/Ionicons";
-import { SafeAreaView } from "react-native-safe-area-context";
 
 // Types
 type TabConfig = {
@@ -51,9 +50,9 @@ const TABS: TabConfig[] = [
 
 export default function TabLayout() {
   return (
-    <SafeAreaView style={{ flex: 1 }}>
+    <View style={{ flex: 1 }}>
       <StatusBar
-        barStyle={Platform.OS === "ios" ? "dark-content" : "default"}
+        barStyle={Platform.OS === "ios" ? "light-content" : "default"}
       />
       <Tabs
         screenOptions={{
@@ -88,6 +87,6 @@ export default function TabLayout() {
           />
         ))}
       </Tabs>
-    </SafeAreaView>
+    </View>
   );
 }
