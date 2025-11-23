@@ -187,12 +187,6 @@ export const useGameScore = (client: ThirdwebClient) => {
             onSuccess: (receipt) => {
               console.log("Transaction sent:", receipt.transactionHash);
 
-              Alert.alert(
-                "Success! 🎉",
-                `Your score of ${statsData.score} has been submitted to the leaderboard!\n\nTransaction: ${receipt.transactionHash.slice(0, 10)}...`,
-                [{ text: "OK" }]
-              );
-
               // Update last submitted score to prevent duplicate submissions
               setLastSubmittedScore(statsData.score);
               setIsSubmittingToContract(false);
@@ -284,7 +278,6 @@ export const useGameScore = (client: ThirdwebClient) => {
 
           // Check if score meets minimum qualification and submit to contract
           if (data.weeklyAccumulatedScore >= MIN_QUALIFICATION_SCORE) {
-            // Submit to smart contract in the background
             submitScoreToContract(data.weeklyAccumulatedScore).catch((error) => {
               console.error("Background contract submission failed:", error);
             });

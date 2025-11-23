@@ -1,3 +1,4 @@
+import 'react-native-get-random-values';
 import { Stack } from "expo-router";
 import "./global.css";
 import { useFonts } from "expo-font";
@@ -23,16 +24,16 @@ export default function RootLayout() {
     "PixelifySans-Bold": require("../assets/fonts/Pixelify_Sans/PixelifySans-Bold.ttf"),
   });
 
-   if (!loaded) {
+  if (!loaded) {
     return null;
   }
 
   return (
     <ThirdwebProvider>
-      <Stack>
       <StatusBar
-        barStyle={Platform.OS === "ios" ? "light-content" : "default"}
-      />
+          barStyle={Platform.OS === "ios" ? "light-content" : "default"}
+        />
+      <Stack>
         <Stack.Screen name="index" options={{ headerShown: false }} />
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         <Stack.Screen name="(auth)" options={{ headerShown: false }} />

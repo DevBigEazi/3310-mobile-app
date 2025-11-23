@@ -161,7 +161,7 @@ export default function SnakeGame({
         let newScore = prev.score;
 
         if (newHead.x === prev.food.x && newHead.y === prev.food.y) {
-          newScore += 2;
+          newScore += 300;
           newFood = generateFood(newSnake);
           setSpeed((s) => Math.max(50, s - 2));
         } else {
