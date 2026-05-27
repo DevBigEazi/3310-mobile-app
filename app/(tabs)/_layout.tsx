@@ -2,8 +2,11 @@ import { Tabs } from 'expo-router';
 import React from 'react';
 import { Ionicons } from '@expo/vector-icons';
 import { Platform } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function TabLayout() {
+  const insets = useSafeAreaInsets();
+
   return (
     <Tabs
       screenOptions={{
@@ -14,8 +17,8 @@ export default function TabLayout() {
           backgroundColor: '#0A0E27', // Deep space black/blue
           borderTopWidth: 2,
           borderTopColor: '#404040', // Dark Charcoal border
-          height: Platform.OS === 'ios' ? 90 : 80,
-          paddingBottom: Platform.OS === 'ios' ? 30 : 15,
+          height: (Platform.OS === 'ios' ? 60 : 56) + insets.bottom,
+          paddingBottom: insets.bottom,
           paddingTop: 12,
         },
         tabBarLabelStyle: {
@@ -58,19 +61,6 @@ export default function TabLayout() {
           tabBarIcon: ({ color, focused }) => (
             <Ionicons name={focused ? "person" : "person-outline"} size={24} color={color} />
           ),
-        }}
-      />
-      {/* Hide default boilerplate routes */}
-      <Tabs.Screen
-        name="index"
-        options={{
-          href: null,
-        }}
-      />
-      <Tabs.Screen
-        name="explore"
-        options={{
-          href: null,
         }}
       />
     </Tabs>
