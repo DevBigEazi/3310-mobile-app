@@ -25,7 +25,7 @@ export default function LoginStep({
   return (
     <Animated.View entering={FadeIn.duration(400)} className="w-full">
       <Text className="font-arcade text-xs text-secondary text-center mb-2 tracking-widest">
-        // PROTOCOL_AUTH //
+        {"// PROTOCOL_AUTH //"}
       </Text>
       <Text 
         className="font-arcade text-[15px] text-white text-center mb-8 tracking-wider"

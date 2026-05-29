@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, TouchableOpacity, ActivityIndicator, Alert, Clipboard } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -7,31 +7,19 @@ import * as Haptics from 'expo-haptics';
 import { Ionicons } from '@expo/vector-icons';
 import { useReactiveClient } from '@dynamic-labs/react-hooks';
 import { dynamicClient } from '../../client';
-import { BACKEND_URL, AVATARS } from '../../constants/config';
+import { AVATARS } from '../../constants/config';
 import RetroCrtEffects from '../../components/auth/RetroCrtEffects';
-
-interface PlayerProfile {
-  address: string;
-  username: string;
-  email?: string;
-  referralCode: string;
-  referredBy: string | null;
-  referralPoints: number;
-  referralCount: number;
-}
-
-interface PlayerStats {
-  highestScore: number;
-  totalGames: number;
-}
+import { usePlayerProfile } from '../../hooks/usePlayerProfile';
 
 export default function ProfileScreen(): React.JSX.Element {
   const router = useRouter();
   const client = useReactiveClient(dynamicClient);
+  const address = client.wallets.primary?.address;
   
-  const [profile, setProfile] = useState<PlayerProfile | null>(null);
-  const [stats, setStats] = useState<PlayerStats | null>(null);
-  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const { data: profileData, isLoading } = usePlayerProfile(address);
+  const profile = profileData?.player || null;
+  const stats = profileData?.stats || null;
+
   const [isRegisteringPasskey, setIsRegisteringPasskey] = useState<boolean>(false);
   const [copiedLink, setCopiedLink] = useState<boolean>(false);
   const [selectedAvatarName, setSelectedAvatarName] = useState<string>('CYAN VIPER');
@@ -64,38 +52,6 @@ export default function ProfileScreen(): React.JSX.Element {
   };
 
   const PASSKEY_ENABLED = false;
-
-  // Retrieve player profile from backend
-  const fetchProfile = useCallback(async () => {
-    const address = client.wallets.primary?.address;
-    if (!address) {
-      setIsLoading(false);
-      return;
-    }
-
-    try {
-      const token = await AsyncStorage.getItem('jwt_token');
-      const response = await fetch(`${BACKEND_URL}/api/player/${address}`, {
-        headers: {
-          'Authorization': token ? `Bearer ${token}` : '',
-        },
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        setProfile(data.player);
-        setStats(data.stats);
-      }
-    } catch (error) {
-      console.error('Error fetching player profile:', error);
-    } finally {
-      setIsLoading(false);
-    }
-  }, [client.wallets.primary?.address]);
-
-  useEffect(() => {
-    fetchProfile();
-  }, [fetchProfile]);
 
   const handleCopyReferral = () => {
     if (!profile?.referralCode) return;
@@ -142,9 +98,47 @@ export default function ProfileScreen(): React.JSX.Element {
 
   if (isLoading) {
     return (
-      <SafeAreaView className="flex-1 bg-primary justify-center items-center">
-        <ActivityIndicator size="large" color="#00FFFF" />
-        <Text className="font-terminal text-sm text-secondary mt-3">DECRYPTING PROFILE...</Text>
+      <SafeAreaView style={{ flex: 1, backgroundColor: '#0A0E27' }}>
+        <View className="flex-1 w-full px-4 pt-2 items-center justify-start gap-4">
+          {/* Top Area: Branding & Title */}
+          <View className="items-center w-full">
+            <View className="items-center mb-0.5 mt-1">
+              <Text className="font-arcade text-[10px] text-secondary tracking-[2px] opacity-80">
+                {"// 3310 CONSOLE //"}
+              </Text>
+              <Text className="font-pixel text-[11px] text-grey-100 mt-0.5">
+                SECURE DECRYPTED USER PROFILE
+              </Text>
+            </View>
+            <Text className="font-terminal text-grey-100 text-[14px] text-center mb-1">
+              AGENT: FETCHING PROFILE DATA...
+            </Text>
+          </View>
+
+          {/* Loading Profile Card */}
+          <View 
+            className="w-full max-w-sm bg-[#0D122B] border-2 rounded-2xl p-6 relative my-3 overflow-hidden justify-center items-center"
+            style={{
+              borderColor: '#00FFFF',
+              shadowColor: '#00FFFF',
+              shadowOpacity: 0.3,
+              shadowRadius: 10,
+              minHeight: 250,
+            }}
+          >
+            <RetroCrtEffects />
+            <ActivityIndicator size="large" color="#00FFFF" className="mb-4" />
+            <Text className="font-terminal text-base text-secondary tracking-widest text-center">
+              DECRYPTING PROFILE...
+            </Text>
+            <Text className="font-pixel text-[9px] text-grey-100 mt-2 text-center">
+              ESTABLISHING ENCRYPTED SECURE LINK
+            </Text>
+          </View>
+
+          {/* Dummy placeholders for layout balance */}
+          <View className="w-full max-w-sm mt-1 h-32 bg-[#0D122B]/20 border border-grey-200/10 rounded-xl" />
+        </View>
       </SafeAreaView>
     );
   }
@@ -159,7 +153,7 @@ export default function ProfileScreen(): React.JSX.Element {
           {/* Console Branding */}
           <View className="items-center mb-0.5 mt-1">
             <Text className="font-arcade text-[10px] text-secondary tracking-[2px] opacity-80">
-              // 3310 CONSOLE //
+              {"// 3310 CONSOLE //"}
             </Text>
             <Text className="font-pixel text-[11px] text-grey-100 mt-0.5">
               SECURE DECRYPTED USER PROFILE

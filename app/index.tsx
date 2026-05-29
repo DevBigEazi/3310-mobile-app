@@ -31,7 +31,6 @@ export default function Index() {
           const address = client.wallets.primary?.address;
           if (address) {
             try {
-              console.log("[DEBUG index.tsx] checkAppStatus hitting BACKEND_URL:", BACKEND_URL, "for address:", address);
               // Check if address is registered in the backend
               const checkResponse = await fetch(`${BACKEND_URL}/api/player/check/${address}`);
               const checkData = await checkResponse.json();

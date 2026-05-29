@@ -41,7 +41,7 @@ export default function DecryptorStep({
       </TouchableOpacity>
 
       <Text className="font-arcade text-xs text-warning text-center mb-2 tracking-widest">
-        // ACCESS_DECRYPTOR //
+        {"// ACCESS_DECRYPTOR //"}
       </Text>
       <Text 
         className="font-arcade text-[14px] text-white text-center mb-3 tracking-wider"

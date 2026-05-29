@@ -42,7 +42,7 @@ export default function RegisterStep({
   return (
     <Animated.View entering={FadeIn.duration(400)} className="w-full">
       <Text className="font-arcade text-xs text-accent text-center mb-2 tracking-widest">
-        // CODENAME_REGISTRATION //
+        {"// CODENAME_REGISTRATION //"}
       </Text>
       <Text 
         className="font-arcade text-[14px] text-white text-center mb-6 tracking-wider"

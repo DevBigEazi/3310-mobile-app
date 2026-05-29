@@ -1,86 +1,21 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, FlatList, ActivityIndicator, RefreshControl } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Haptics from 'expo-haptics';
 import { Ionicons } from '@expo/vector-icons';
-import { BACKEND_URL } from '../../constants/config';
-
-// Unified interface to prevent typescript FlatList type mismatch errors
-interface LeaderboardEntry {
-  address: string;
-  username: string;
-  weeklyScore?: number;
-  gamesCount?: number;
-  highScore?: number;
-  totalGames?: number;
-  referralPoints: number;
-}
+import { useLeaderboard } from '../../hooks/useLeaderboard';
 
 export default function RanksScreen(): React.JSX.Element {
   const [activeTab, setActiveTab] = useState<'weekly' | 'allTime'>('weekly');
-  const [weeklyData, setWeeklyData] = useState<LeaderboardEntry[]>([]);
-  const [allTimeData, setAllTimeData] = useState<LeaderboardEntry[]>([]);
-  const [isLoading, setIsLoading] = useState<boolean>(true);
-  const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
 
-  // Helper: Retrieve authorization headers
-  const getAuthHeaders = async (): Promise<HeadersInit> => {
-    const token = await AsyncStorage.getItem('jwt_token');
-    return {
-      'Content-Type': 'application/json',
-      'Authorization': token ? `Bearer ${token}` : '',
-    };
-  };
+  // Fetch both leaderboards in parallel for instant tab switching
+  const weeklyQuery = useLeaderboard('weekly');
+  const allTimeQuery = useLeaderboard('allTime');
 
-  // Fetch Weekly Leaderboard
-  const fetchWeeklyLeaderboard = useCallback(async (isSilent = false) => {
-    if (!isSilent) setIsLoading(true);
-    try {
-      const headers = await getAuthHeaders();
-      const response = await fetch(`${BACKEND_URL}/api/scores/leaderboard/weekly`, { headers });
-      if (response.ok) {
-        const data = await response.json();
-        setWeeklyData(data.leaderboard || []);
-      }
-    } catch (error) {
-      console.error('Error fetching weekly leaderboard:', error);
-    } finally {
-      setIsLoading(false);
-      setIsRefreshing(false);
-    }
-  }, []);
-
-  // Fetch All-Time Leaderboard
-  const fetchAllTimeLeaderboard = useCallback(async (isSilent = false) => {
-    if (!isSilent) setIsLoading(true);
-    try {
-      const headers = await getAuthHeaders();
-      const response = await fetch(`${BACKEND_URL}/api/scores/leaderboard/all-time`, { headers });
-      if (response.ok) {
-        const data = await response.json();
-        setAllTimeData(data.leaderboard || []);
-      }
-    } catch (error) {
-      console.error('Error fetching all-time leaderboard:', error);
-    } finally {
-      setIsLoading(false);
-      setIsRefreshing(false);
-    }
-  }, []);
-
-  // Fetch data depending on active tab
-  const refreshData = useCallback((isSilent = false) => {
-    if (activeTab === 'weekly') {
-      fetchWeeklyLeaderboard(isSilent);
-    } else {
-      fetchAllTimeLeaderboard(isSilent);
-    }
-  }, [activeTab, fetchWeeklyLeaderboard, fetchAllTimeLeaderboard]);
-
-  useEffect(() => {
-    refreshData();
-  }, [refreshData]);
+  const currentQuery = activeTab === 'weekly' ? weeklyQuery : allTimeQuery;
+  const leaderboardData = currentQuery.data || [];
+  const isLoading = activeTab === 'weekly' ? weeklyQuery.isLoading : allTimeQuery.isLoading;
+  const isRefreshing = currentQuery.isRefetching;
 
   // Tab switcher
   const handleTabChange = (tab: 'weekly' | 'allTime') => {
@@ -91,8 +26,7 @@ export default function RanksScreen(): React.JSX.Element {
   // Pull-to-refresh
   const handleRefresh = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    setIsRefreshing(true);
-    refreshData(true);
+    currentQuery.refetch();
   };
 
   // Get place color style
@@ -191,13 +125,18 @@ export default function RanksScreen(): React.JSX.Element {
       </View>
 
       {isLoading && !isRefreshing ? (
-        <View className="flex-1 justify-center items-center">
-          <ActivityIndicator size="large" color="#00FFFF" />
-          <Text className="font-terminal text-sm text-secondary mt-3">LOADING TELEMETRY...</Text>
+        <View className="flex-1 justify-center items-center p-6 border-x border-b border-grey-200/20 bg-grey-200/5 rounded-b-lg min-h-[300px]">
+          <ActivityIndicator size="large" color="#00FFFF" className="mb-4" />
+          <Text className="font-terminal text-base text-secondary tracking-widest text-center">
+            LOADING TELEMETRY...
+          </Text>
+          <Text className="font-pixel text-[9px] text-grey-100 mt-2 text-center">
+            ESTABLISHING DECRYPTED FEED SIGNAL
+          </Text>
         </View>
       ) : (
         <FlatList
-          data={activeTab === 'weekly' ? weeklyData : allTimeData}
+          data={leaderboardData}
           keyExtractor={(item) => item.address}
           refreshControl={
             <RefreshControl

@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { BACKEND_URL } from '../constants/config';
 
 export interface GameSessionInfo {
@@ -15,21 +16,12 @@ export interface GameSessionInfo {
 }
 
 export const useGameScore = () => {
-  const [lives, setLives] = useState<number>(5);
-  const [gamesPlayedInCurrentHour, setGamesPlayedInCurrentHour] = useState<number>(0);
-  const [nextRefillAt, setNextRefillAt] = useState<string | null>(null);
-  const [firstGameInHour, setFirstGameInHour] = useState<string | null>(null);
-  const [weeklyScore, setWeeklyScore] = useState<number>(0);
-  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const queryClient = useQueryClient();
   const [gameSessionId, setGameSessionId] = useState<string | null>(null);
 
   // Formatted timer strings
   const [refillCountdown, setRefillCountdown] = useState<string>('');
   const [hourlyCountdown, setHourlyCountdown] = useState<string>('');
-
-  // Flags
-  const isOutOfLives = lives <= 0;
-  const isHourLimitReached = gamesPlayedInCurrentHour >= 5;
 
   const timerIntervalRef = useRef<NodeJS.Timeout | number | null>(null);
 
@@ -42,36 +34,43 @@ export const useGameScore = () => {
     };
   };
 
-  // Fetch or sync the session status with backend
-  const fetchSession = useCallback(async (): Promise<GameSessionInfo | null> => {
-    try {
-      setIsLoading(true);
-      const headers = await getAuthHeaders();
-      const response = await fetch(`${BACKEND_URL}/api/scores/game-session`, { headers });
-      
-      if (!response.ok) {
-        throw new Error(`Failed to fetch session. Status: ${response.status}`);
+  // TanStack Query to fetch session info
+  const { data: sessionInfo, isLoading: isQueryLoading } = useQuery<GameSessionInfo | null, Error>({
+    queryKey: ['gameSession'],
+    queryFn: async (): Promise<GameSessionInfo | null> => {
+      try {
+        const headers = await getAuthHeaders();
+        const response = await fetch(`${BACKEND_URL}/api/scores/game-session`, { headers });
+        if (!response.ok) {
+          throw new Error(`Failed to fetch session. Status: ${response.status}`);
+        }
+        return response.json();
+      } catch (error) {
+        console.error('[useGameScore] Error fetching session:', error);
+        return null;
       }
+    },
+  });
 
-      const data: GameSessionInfo = await response.json();
-      setLives(data.currentLives);
-      setGamesPlayedInCurrentHour(data.gamesPlayedInCurrentHour);
-      setNextRefillAt(data.nextRefillAt);
-      setFirstGameInHour(data.firstGameInHour);
-      setWeeklyScore(data.weeklyAccumulatedScore);
-      return data;
-    } catch (error) {
-      console.error('[useGameScore] Error fetching session:', error);
-      return null;
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
+  const lives = sessionInfo?.currentLives ?? 5;
+  const gamesPlayedInCurrentHour = sessionInfo?.gamesPlayedInCurrentHour ?? 0;
+  const nextRefillAt = sessionInfo?.nextRefillAt ?? null;
+  const firstGameInHour = sessionInfo?.firstGameInHour ?? null;
+  const weeklyScore = sessionInfo?.weeklyAccumulatedScore ?? 0;
 
-  // Start a new game session
-  const startGameAttempt = useCallback(async (): Promise<string | null> => {
-    try {
-      setIsLoading(true);
+  // Flags
+  const isOutOfLives = lives <= 0;
+  const isHourLimitReached = gamesPlayedInCurrentHour >= 5;
+
+  // Fetch or sync the session status manually (calls refetch under the hood)
+  const fetchSession = useCallback(async (): Promise<GameSessionInfo | null> => {
+    await queryClient.invalidateQueries({ queryKey: ['gameSession'] });
+    return queryClient.getQueryData<GameSessionInfo>(['gameSession']) || null;
+  }, [queryClient]);
+
+  // Mutations
+  const startMutation = useMutation<string | null, Error, void>({
+    mutationFn: async (): Promise<string | null> => {
       const headers = await getAuthHeaders();
       const response = await fetch(`${BACKEND_URL}/api/scores/start`, {
         method: 'POST',
@@ -85,71 +84,78 @@ export const useGameScore = () => {
 
       const data = await response.json();
       setGameSessionId(data.gameSessionId);
-      setLives(data.currentLives);
-      setGamesPlayedInCurrentHour(data.gamesPlayedInCurrentHour);
       return data.gameSessionId;
-    } catch (error) {
-      console.error('[useGameScore] Error starting game:', error);
-      // Re-sync session state to ensure UI matches database limits
-      await fetchSession();
-      return null;
-    } finally {
-      setIsLoading(false);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['gameSession'] });
+    },
+    onError: () => {
+      queryClient.invalidateQueries({ queryKey: ['gameSession'] });
     }
-  }, [fetchSession]);
+  });
 
-  // Submit and validate the score on game over
-  const submitGameScore = useCallback(
-    async (score: number): Promise<{ isValid: boolean; updatedScore: number } | null> => {
+  const submitMutation = useMutation<{ isValid: boolean; updatedScore: number } | null, Error, number>({
+    mutationFn: async (score: number): Promise<{ isValid: boolean; updatedScore: number } | null> => {
       if (!gameSessionId) {
         console.error('[useGameScore] Cannot submit score without an active gameSessionId');
         return null;
       }
+      const headers = await getAuthHeaders();
+      const response = await fetch(`${BACKEND_URL}/api/scores/validate-score`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({
+          gameSessionId,
+          score,
+        }),
+      });
 
+      if (!response.ok) {
+        const errData = await response.json();
+        throw new Error(errData.error || 'Failed to validate score');
+      }
+
+      const data = await response.json();
+      setGameSessionId(null); // Reset game session
+
+      return {
+        isValid: data.isValid,
+        updatedScore: data.weeklyAccumulatedScore,
+      };
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['gameSession'] });
+      queryClient.invalidateQueries({ queryKey: ['leaderboard'] });
+    },
+    onError: () => {
+      queryClient.invalidateQueries({ queryKey: ['gameSession'] });
+    }
+  });
+
+  // Start a new game session wrapper
+  const startGameAttempt = useCallback(async (): Promise<string | null> => {
+    try {
+      return await startMutation.mutateAsync();
+    } catch (error) {
+      console.error('[useGameScore] Error starting game:', error);
+      return null;
+    }
+  }, [startMutation]);
+
+  // Submit and validate the score wrapper
+  const submitGameScore = useCallback(
+    async (score: number): Promise<{ isValid: boolean; updatedScore: number } | null> => {
       try {
-        setIsLoading(true);
-        const headers = await getAuthHeaders();
-        const response = await fetch(`${BACKEND_URL}/api/scores/validate-score`, {
-          method: 'POST',
-          headers,
-          body: JSON.stringify({
-            gameSessionId,
-            score,
-          }),
-        });
-
-        if (!response.ok) {
-          const errData = await response.json();
-          throw new Error(errData.error || 'Failed to validate score');
-        }
-
-        const data = await response.json();
-        setLives(data.currentLives);
-        setGamesPlayedInCurrentHour(data.gamesPlayedInCurrentHour);
-        setNextRefillAt(data.nextRefillAt);
-        setWeeklyScore(data.weeklyAccumulatedScore);
-        setGameSessionId(null); // Reset game session
-
-        return {
-          isValid: data.isValid,
-          updatedScore: data.weeklyAccumulatedScore,
-        };
+        return await submitMutation.mutateAsync(score);
       } catch (error) {
         console.error('[useGameScore] Error validating/submitting score:', error);
-        setGameSessionId(null);
-        await fetchSession();
         return null;
-      } finally {
-        setIsLoading(false);
       }
     },
-    [gameSessionId, fetchSession]
+    [submitMutation]
   );
 
-  // Initial load
-  useEffect(() => {
-    fetchSession();
-  }, [fetchSession]);
+  const isLoading = isQueryLoading || startMutation.isPending || submitMutation.isPending;
 
   // Timer loop for handling refill and hourly countdowns
   useEffect(() => {
@@ -195,7 +201,7 @@ export const useGameScore = () => {
       }
 
       if (shouldRefreshSession) {
-        fetchSession();
+        queryClient.invalidateQueries({ queryKey: ['gameSession'] });
       }
     };
 
@@ -207,7 +213,7 @@ export const useGameScore = () => {
         clearInterval(timerIntervalRef.current);
       }
     };
-  }, [lives, nextRefillAt, gamesPlayedInCurrentHour, firstGameInHour, fetchSession]);
+  }, [lives, nextRefillAt, gamesPlayedInCurrentHour, firstGameInHour, queryClient]);
 
   return {
     lives,

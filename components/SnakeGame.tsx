@@ -9,7 +9,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from 'expo-router';
 
 const GRID_SIZE = 20;
-const INITIAL_SPEED = 200;
+const INITIAL_SPEED = 170;
 
 const getThemeColors = (color: string) => {
   switch (color) {
@@ -375,7 +375,7 @@ export default function SnakeGame({
         {/* Branding */}
         <View className="items-center mb-0.5 mt-1">
           <Text className="font-arcade text-[10px] tracking-[2px] opacity-80" style={{ color: avatar.color }}>
-            // 3310 CONSOLE //
+            {"// 3310 CONSOLE //"}
           </Text>
           <Text className="font-pixel text-[11px] mt-0.5" style={{ color: theme.textMuted }}>
             SECURE CONNECTION ESTABLISHED

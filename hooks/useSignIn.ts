@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Alert } from 'react-native';
+import { Alert, TextInput, NativeSyntheticEvent, TextInputKeyPressEvent } from 'react-native';
 import { useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Haptics from 'expo-haptics';
@@ -22,7 +22,7 @@ export const useSignIn = () => {
   const [activeProvider, setActiveProvider] = useState<'google' | 'passkey' | 'email' | null>(null);
 
   // Focus reference for OTP boxes
-  const otpInputs = useRef<Array<any>>([]);
+  const otpInputs = useRef<Array<TextInput | null>>([]);
 
   // Blink cursor for terminal inputs
   const [cursorVisible, setCursorVisible] = useState(true);
@@ -78,9 +78,10 @@ export const useSignIn = () => {
       } else {
         setAuthStep('register');
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Post-auth setup failed:', err);
-      Alert.alert('CONNECTION ERROR', 'Failed to verify agent signature.');
+      const errMsg = err instanceof Error ? err.message : 'Failed to verify agent signature.';
+      Alert.alert('CONNECTION ERROR', errMsg);
     } finally {
       setIsLoading(false);
     }
@@ -101,9 +102,10 @@ export const useSignIn = () => {
       setAuthStep('decryptor');
       setResendCountdown(60);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Failed to send OTP:', err);
-      Alert.alert('TRANSMISSION FAILURE', err.message || 'Failed to send OTP code.');
+      const errMsg = err instanceof Error ? err.message : 'Failed to send OTP code.';
+      Alert.alert('TRANSMISSION FAILURE', errMsg);
     } finally {
       setIsLoading(false);
       setActiveProvider(null);
@@ -125,7 +127,7 @@ export const useSignIn = () => {
     }
   };
 
-  const handleOtpKeyPress = (e: any, index: number) => {
+  const handleOtpKeyPress = (e: TextInputKeyPressEvent, index: number) => {
     if (e.nativeEvent.key === 'Backspace' && !otp[index] && index > 0) {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
       const newOtp = [...otp];
@@ -142,9 +144,10 @@ export const useSignIn = () => {
     try {
       await client.auth.email.verifyOTP(code);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Failed to verify OTP:', err);
-      Alert.alert('DECRYPTION FAILURE', err.message || 'Invalid security key.');
+      const errMsg = err instanceof Error ? err.message : 'Invalid security key.';
+      Alert.alert('DECRYPTION FAILURE', errMsg);
     } finally {
       setIsLoading(false);
       setActiveProvider(null);
@@ -197,9 +200,10 @@ export const useSignIn = () => {
       
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       router.replace('/(tabs)/game');
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Registration failed:', err);
-      Alert.alert('SYSTEM ERROR', err.message || 'Failed to register agent. Try again.');
+      const errMsg = err instanceof Error ? err.message : 'Failed to register agent. Try again.';
+      Alert.alert('SYSTEM ERROR', errMsg);
     } finally {
       setIsLoading(false);
     }
@@ -211,9 +215,10 @@ export const useSignIn = () => {
     setActiveProvider(provider);
     try {
       await client.auth.social.connect({ provider });
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error(`Social auth failed for ${provider}:`, err);
-      Alert.alert('AUTHORIZATION FAILURE', err.message || 'Failed to authenticate.');
+      const errMsg = err instanceof Error ? err.message : 'Failed to authenticate.';
+      Alert.alert('AUTHORIZATION FAILURE', errMsg);
     } finally {
       setIsLoading(false);
       setActiveProvider(null);
@@ -230,9 +235,10 @@ export const useSignIn = () => {
       setResendCountdown(60);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       Alert.alert('TRANSMISSION SUCCESS', 'A new access key has been transmitted.');
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Failed to resend OTP:', err);
-      Alert.alert('TRANSMISSION FAILURE', err.message || 'Failed to resend OTP.');
+      const errMsg = err instanceof Error ? err.message : 'Failed to resend OTP.';
+      Alert.alert('TRANSMISSION FAILURE', errMsg);
     } finally {
       setIsLoading(false);
       setActiveProvider(null);
@@ -252,9 +258,10 @@ export const useSignIn = () => {
     setActiveProvider('passkey');
     try {
       await client.auth.passkey.signIn();
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Passkey sign-in failed:', err);
-      Alert.alert('DECRYPTION FAILURE', err.message || 'Passkey auth failed.');
+      const errMsg = err instanceof Error ? err.message : 'Passkey auth failed.';
+      Alert.alert('DECRYPTION FAILURE', errMsg);
     } finally {
       setIsLoading(false);
       setActiveProvider(null);
