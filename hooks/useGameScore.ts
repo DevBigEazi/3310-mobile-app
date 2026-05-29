@@ -1,7 +1,9 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import Toast from 'react-native-toast-message';
 import { BACKEND_URL } from '../constants/config';
+import { fetchWithTimeout } from '../utils/helpers';
 
 export interface GameSessionInfo {
   playerAddress: string;
@@ -23,6 +25,9 @@ export const useGameScore = () => {
   const [refillCountdown, setRefillCountdown] = useState<string>('');
   const [hourlyCountdown, setHourlyCountdown] = useState<string>('');
 
+  const [pendingScore, setPendingScore] = useState<{ gameSessionId: string; score: number } | null>(null);
+  const [isSyncingPending, setIsSyncingPending] = useState<boolean>(false);
+
   const timerIntervalRef = useRef<NodeJS.Timeout | number | null>(null);
 
   // Helper: Retrieve authorization headers
@@ -34,13 +39,152 @@ export const useGameScore = () => {
     };
   };
 
+  // Helper to load pending score on initialization/focus
+  const loadPendingScore = useCallback(async () => {
+    try {
+      const stored = await AsyncStorage.getItem('pending_score_sync');
+      if (stored) {
+        setPendingScore(JSON.parse(stored));
+      } else {
+        setPendingScore(null);
+      }
+    } catch (e) {
+      console.error('[useGameScore] Error loading pending score:', e);
+    }
+  }, []);
+
+  // Sync the pending offline score manually/automatically
+  const syncPendingScore = useCallback(async () => {
+    try {
+      const stored = await AsyncStorage.getItem('pending_score_sync');
+      if (!stored) return;
+
+      setIsSyncingPending(true);
+      const { gameSessionId: storedSessionId, score: storedScore } = JSON.parse(stored);
+      const headers = await getAuthHeaders();
+      const response = await fetchWithTimeout(`${BACKEND_URL}/api/scores/validate-score`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({
+          gameSessionId: storedSessionId,
+          score: storedScore,
+        }),
+      });
+
+      if (!response.ok) {
+        const errData = await response.json();
+        // Replay Protection / server-side already saved case
+        if (errData.error === 'INVALID_OR_SUBMITTED_SESSION') {
+          await AsyncStorage.removeItem('pending_score_sync');
+          setPendingScore(null);
+          queryClient.invalidateQueries({ queryKey: ['gameSession'] });
+          queryClient.invalidateQueries({ queryKey: ['leaderboard'] });
+          Toast.show({
+            type: 'success',
+            text1: 'SCORE SUBMITTED',
+            text2: 'Score has already been successfully submitted.',
+          });
+          return;
+        }
+        throw new Error(errData.error || 'Failed to validate score.');
+      }
+
+      await AsyncStorage.removeItem('pending_score_sync');
+      setPendingScore(null);
+      queryClient.invalidateQueries({ queryKey: ['gameSession'] });
+      queryClient.invalidateQueries({ queryKey: ['leaderboard'] });
+
+      Toast.show({
+        type: 'success',
+        text1: 'SCORE SUBMITTED',
+        text2: `Score of ${storedScore} successfully submitted!`,
+      });
+    } catch (error: any) {
+      console.error('[useGameScore] Manual sync error:', error);
+      const isNetworkError = error.message?.includes('Network request failed') || 
+                             error.name === 'TypeError' ||
+                             error.message?.includes('fetch');
+      Toast.show({
+        type: 'error',
+        text1: 'SUBMISSION FAILED',
+        text2: isNetworkError
+          ? 'Network connection failed. Please check your internet connection.'
+          : error.message || 'Could not submit offline score.',
+      });
+    } finally {
+      setIsSyncingPending(false);
+    }
+  }, [queryClient]);
+
+  // Load pending score on mount
+  useEffect(() => {
+    loadPendingScore();
+  }, [loadPendingScore]);
+
+  // Background auto-sync on hook load/focus
+  useEffect(() => {
+    const autoSyncPendingScore = async () => {
+      try {
+        const stored = await AsyncStorage.getItem('pending_score_sync');
+        if (!stored) return;
+        
+        const { gameSessionId: storedSessionId, score: storedScore } = JSON.parse(stored);
+        const headers = await getAuthHeaders();
+        const response = await fetchWithTimeout(`${BACKEND_URL}/api/scores/validate-score`, {
+          method: 'POST',
+          headers,
+          body: JSON.stringify({
+            gameSessionId: storedSessionId,
+            score: storedScore,
+          }),
+        });
+
+        if (response.ok) {
+          await AsyncStorage.removeItem('pending_score_sync');
+          setPendingScore(null);
+          queryClient.invalidateQueries({ queryKey: ['gameSession'] });
+          queryClient.invalidateQueries({ queryKey: ['leaderboard'] });
+          Toast.show({
+            type: 'success',
+            text1: 'SCORE AUTO-SUBMITTED',
+            text2: `Your saved score of ${storedScore} was submitted automatically!`,
+          });
+        } else {
+          const errData = await response.json();
+          // If session is already submitted or expired/invalid, clear it to avoid blocking user
+          if (errData.error === 'INVALID_OR_SUBMITTED_SESSION') {
+            await AsyncStorage.removeItem('pending_score_sync');
+            setPendingScore(null);
+            queryClient.invalidateQueries({ queryKey: ['gameSession'] });
+            queryClient.invalidateQueries({ queryKey: ['leaderboard'] });
+            Toast.show({
+              type: 'success',
+              text1: 'SCORE SUBMITTED',
+              text2: 'Saved score has already been submitted successfully.',
+            });
+          }
+        }
+      } catch (e) {
+        // Fail silently during auto background sync
+        console.log('[useGameScore] Auto sync background check failed (expected if offline):', e);
+      }
+    };
+
+    // Delay autoSync slightly to avoid race conditions with initial session queries
+    const timer = setTimeout(() => {
+      autoSyncPendingScore();
+    }, 1500);
+
+    return () => clearTimeout(timer);
+  }, [queryClient]);
+
   // TanStack Query to fetch session info
   const { data: sessionInfo, isLoading: isQueryLoading } = useQuery<GameSessionInfo | null, Error>({
     queryKey: ['gameSession'],
     queryFn: async (): Promise<GameSessionInfo | null> => {
       try {
         const headers = await getAuthHeaders();
-        const response = await fetch(`${BACKEND_URL}/api/scores/game-session`, { headers });
+        const response = await fetchWithTimeout(`${BACKEND_URL}/api/scores/game-session`, { headers });
         if (!response.ok) {
           throw new Error(`Failed to fetch session. Status: ${response.status}`);
         }
@@ -72,7 +216,7 @@ export const useGameScore = () => {
   const startMutation = useMutation<string | null, Error, void>({
     mutationFn: async (): Promise<string | null> => {
       const headers = await getAuthHeaders();
-      const response = await fetch(`${BACKEND_URL}/api/scores/start`, {
+      const response = await fetchWithTimeout(`${BACKEND_URL}/api/scores/start`, {
         method: 'POST',
         headers,
       });
@@ -95,13 +239,14 @@ export const useGameScore = () => {
   });
 
   const submitMutation = useMutation<{ isValid: boolean; updatedScore: number } | null, Error, number>({
+    meta: { preventGlobalToast: true },
     mutationFn: async (score: number): Promise<{ isValid: boolean; updatedScore: number } | null> => {
       if (!gameSessionId) {
         console.error('[useGameScore] Cannot submit score without an active gameSessionId');
         return null;
       }
       const headers = await getAuthHeaders();
-      const response = await fetch(`${BACKEND_URL}/api/scores/validate-score`, {
+      const response = await fetchWithTimeout(`${BACKEND_URL}/api/scores/validate-score`, {
         method: 'POST',
         headers,
         body: JSON.stringify({
@@ -123,18 +268,70 @@ export const useGameScore = () => {
         updatedScore: data.weeklyAccumulatedScore,
       };
     },
-    onSuccess: () => {
+    onSuccess: (data, variables) => {
       queryClient.invalidateQueries({ queryKey: ['gameSession'] });
       queryClient.invalidateQueries({ queryKey: ['leaderboard'] });
+      
+      // Clear pending score locally if any
+      AsyncStorage.removeItem('pending_score_sync').then(() => {
+        setPendingScore(null);
+      }).catch(err => console.error('Failed to clear pending score:', err));
+
+      if (data?.isValid) {
+        Toast.show({
+          type: 'success',
+          text1: 'SCORE SUBMITTED',
+          text2: `Score of ${variables} successfully submitted to leaderboard!`,
+        });
+      } else {
+        Toast.show({
+          type: 'error',
+          text1: 'VALIDATION FAILED',
+          text2: 'Could not validate score. It may have expired.',
+        });
+      }
     },
-    onError: () => {
+    onError: (error, variables) => {
       queryClient.invalidateQueries({ queryKey: ['gameSession'] });
+      
+      const isNetworkError = error.message?.includes('Network request failed') || 
+                             error.name === 'TypeError' ||
+                             error.message?.includes('fetch');
+      
+      if (isNetworkError && gameSessionId) {
+        const offlineData = { gameSessionId, score: variables };
+        AsyncStorage.setItem('pending_score_sync', JSON.stringify(offlineData))
+          .then(() => {
+            setPendingScore(offlineData);
+            Toast.show({
+              type: 'error',
+              text1: 'SUBMISSION FAILED (OFFLINE)',
+              text2: 'Score saved locally. Tap "Submit Score" when your connection is stable.',
+            });
+          })
+          .catch(err => console.error('Failed to save offline score:', err));
+      } else {
+        Toast.show({
+          type: 'error',
+          text1: 'SUBMISSION FAILED',
+          text2: error.message || 'Could not submit your score. Please try again.',
+        });
+      }
     }
   });
 
   // Start a new game session wrapper
   const startGameAttempt = useCallback(async (): Promise<string | null> => {
     try {
+      const stored = await AsyncStorage.getItem('pending_score_sync');
+      if (stored) {
+        Toast.show({
+          type: 'error',
+          text1: 'SUBMISSION REQUIRED',
+          text2: 'Please submit your saved score before starting a new game.',
+        });
+        return null;
+      }
       return await startMutation.mutateAsync();
     } catch (error) {
       console.error('[useGameScore] Error starting game:', error);
@@ -230,5 +427,8 @@ export const useGameScore = () => {
     fetchSession,
     startGameAttempt,
     submitGameScore,
+    pendingScore,
+    isSyncingPending,
+    syncPendingScore,
   };
 };

@@ -6,9 +6,125 @@ import { useEffect } from 'react';
 import 'react-native-reanimated';
 import '../global.css';
 import { dynamicClient } from '../client';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { View, Text } from 'react-native';
+import Toast, { ToastConfig, BaseToastProps } from 'react-native-toast-message';
+import { QueryClient, QueryCache, MutationCache, QueryClientProvider } from '@tanstack/react-query';
 
-const queryClient = new QueryClient();
+// Toast Component
+const toastConfig: ToastConfig = {
+  success: ({ text1, text2 }: BaseToastProps) => (
+    <View style={{
+      width: '92%',
+      backgroundColor: '#0D122B',
+      borderColor: '#00FF00',
+      borderWidth: 2,
+      borderRadius: 12,
+      paddingVertical: 10,
+      paddingHorizontal: 16,
+      shadowColor: '#00FF00',
+      shadowOffset: { width: 0, height: 0 },
+      shadowOpacity: 0.4,
+      shadowRadius: 8,
+      elevation: 5,
+    }}>
+      <Text style={{ fontFamily: 'PressStart2P-Regular', fontSize: 9, color: '#00FF00', marginBottom: 2 }}>
+        {text1}
+      </Text>
+      {text2 ? (
+        <Text style={{ fontFamily: 'VT323-Regular', fontSize: 14, color: '#C0C0C0' }}>
+          {text2}
+        </Text>
+      ) : null}
+    </View>
+  ),
+  error: ({ text1, text2 }: BaseToastProps) => (
+    <View style={{
+      width: '92%',
+      backgroundColor: '#0D122B',
+      borderColor: '#FF0000',
+      borderWidth: 2,
+      borderRadius: 12,
+      paddingVertical: 10,
+      paddingHorizontal: 16,
+      shadowColor: '#FF0000',
+      shadowOffset: { width: 0, height: 0 },
+      shadowOpacity: 0.4,
+      shadowRadius: 8,
+      elevation: 5,
+    }}>
+      <Text style={{ fontFamily: 'PressStart2P-Regular', fontSize: 9, color: '#FF0000', marginBottom: 2 }}>
+        {text1}
+      </Text>
+      {text2 ? (
+        <Text style={{ fontFamily: 'VT323-Regular', fontSize: 14, color: '#C0C0C0' }}>
+          {text2}
+        </Text>
+      ) : null}
+    </View>
+  ),
+  info: ({ text1, text2 }: BaseToastProps) => (
+    <View style={{
+      width: '92%',
+      backgroundColor: '#0D122B',
+      borderColor: '#00FFFF',
+      borderWidth: 2,
+      borderRadius: 12,
+      paddingVertical: 10,
+      paddingHorizontal: 16,
+      shadowColor: '#00FFFF',
+      shadowOffset: { width: 0, height: 0 },
+      shadowOpacity: 0.4,
+      shadowRadius: 8,
+      elevation: 5,
+    }}>
+      <Text style={{ fontFamily: 'PressStart2P-Regular', fontSize: 9, color: '#00FFFF', marginBottom: 2 }}>
+        {text1}
+      </Text>
+      {text2 ? (
+        <Text style={{ fontFamily: 'VT323-Regular', fontSize: 14, color: '#C0C0C0' }}>
+          {text2}
+        </Text>
+      ) : null}
+    </View>
+  ),
+};
+
+const queryClient = new QueryClient({
+  queryCache: new QueryCache({
+    onError: (error: any, query) => {
+      // Skip global toast if query meta indicates so
+      if (query.meta?.preventGlobalToast) return;
+
+      const isNetworkError = error.message?.includes('Network request failed') || 
+                             error.name === 'TypeError' ||
+                             error.message?.includes('fetch');
+      Toast.show({
+        type: 'error',
+        text1: 'CONNECTION ERROR',
+        text2: isNetworkError
+          ? 'Network connection failed. Please check your internet connection.'
+          : 'Could not load data. Please try again.',
+      });
+    },
+  }),
+  mutationCache: new MutationCache({
+    onError: (error: any, _variables, _context, mutation) => {
+      // Skip global toast if mutation meta indicates so
+      if (mutation.meta?.preventGlobalToast) return;
+
+      const isNetworkError = error.message?.includes('Network request failed') || 
+                             error.name === 'TypeError' ||
+                             error.message?.includes('fetch');
+      Toast.show({
+        type: 'error',
+        text1: 'SUBMISSION ERROR',
+        text2: isNetworkError
+          ? 'Network connection failed. Please check your internet connection.'
+          : 'Something went wrong. Please try again.',
+      });
+    },
+  }),
+});
 
 // Prevent the splash screen from auto-hiding before asset loading is complete.
 SplashScreen.preventAutoHideAsync();
@@ -44,6 +160,7 @@ export default function RootLayout() {
         <Stack.Screen name="(auth)" options={{ headerShown: false }} />
       </Stack>
       <StatusBar style="auto" />
+      <Toast config={toastConfig} />
     </QueryClientProvider>
   );
 }

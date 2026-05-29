@@ -1,11 +1,13 @@
 import { useState, useEffect, useRef } from 'react';
-import { Alert, TextInput, NativeSyntheticEvent, TextInputKeyPressEvent } from 'react-native';
+import { TextInput, NativeSyntheticEvent, TextInputKeyPressEvent } from 'react-native';
 import { useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Haptics from 'expo-haptics';
+import Toast from 'react-native-toast-message';
 import { useReactiveClient } from '@dynamic-labs/react-hooks';
 import { dynamicClient } from '../client';
 import { BACKEND_URL, AVATARS } from '../constants/config';
+import { fetchWithTimeout } from '../utils/helpers';
 
 export const useSignIn = () => {
   const router = useRouter();
@@ -56,11 +58,11 @@ export const useSignIn = () => {
 
     setIsLoading(true);
     try {
-      const checkResponse = await fetch(`${BACKEND_URL}/api/player/check/${address}`);
+      const checkResponse = await fetchWithTimeout(`${BACKEND_URL}/api/player/check/${address}`);
       const checkData = await checkResponse.json();
 
       if (checkData.exists) {
-        const loginResponse = await fetch(`${BACKEND_URL}/api/player`, {
+        const loginResponse = await fetchWithTimeout(`${BACKEND_URL}/api/player`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ address, username: 'returning-user' }),
@@ -73,7 +75,11 @@ export const useSignIn = () => {
           Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
           router.replace('/(tabs)/game');
         } else {
-          Alert.alert('SYSTEM ERROR', 'Failed to retrieve auth token.');
+          Toast.show({
+            type: 'error',
+            text1: 'SIGN IN FAILED',
+            text2: 'Could not retrieve login token.',
+          });
         }
       } else {
         setAuthStep('register');
@@ -81,7 +87,12 @@ export const useSignIn = () => {
     } catch (err: unknown) {
       console.error('Post-auth setup failed:', err);
       const errMsg = err instanceof Error ? err.message : 'Failed to verify agent signature.';
-      Alert.alert('CONNECTION ERROR', errMsg);
+      const isNetworkError = errMsg.includes('Network request failed') || errMsg.includes('fetch');
+      Toast.show({
+        type: 'error',
+        text1: 'CONNECTION ERROR',
+        text2: isNetworkError ? 'Network connection failed. Please check your internet connection.' : errMsg,
+      });
     } finally {
       setIsLoading(false);
     }
@@ -90,7 +101,11 @@ export const useSignIn = () => {
   const handleEmailSubmit = async () => {
     if (!email.trim() || !email.includes('@')) {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-      Alert.alert('DECRYPTION FAILURE', 'Invalid communication frequency (email).');
+      Toast.show({
+        type: 'error',
+        text1: 'SIGN IN FAILED',
+        text2: 'Please enter a valid email address.',
+      });
       return;
     }
     
@@ -105,7 +120,12 @@ export const useSignIn = () => {
     } catch (err: unknown) {
       console.error('Failed to send OTP:', err);
       const errMsg = err instanceof Error ? err.message : 'Failed to send OTP code.';
-      Alert.alert('TRANSMISSION FAILURE', errMsg);
+      const isNetworkError = errMsg.includes('Network request failed') || errMsg.includes('fetch');
+      Toast.show({
+        type: 'error',
+        text1: 'SEND FAILED',
+        text2: isNetworkError ? 'Network connection failed. Please check your internet connection.' : (errMsg || 'Could not send verification code.'),
+      });
     } finally {
       setIsLoading(false);
       setActiveProvider(null);
@@ -147,7 +167,12 @@ export const useSignIn = () => {
     } catch (err: unknown) {
       console.error('Failed to verify OTP:', err);
       const errMsg = err instanceof Error ? err.message : 'Invalid security key.';
-      Alert.alert('DECRYPTION FAILURE', errMsg);
+      const isNetworkError = errMsg.includes('Network request failed') || errMsg.includes('fetch');
+      Toast.show({
+        type: 'error',
+        text1: 'VERIFICATION FAILED',
+        text2: isNetworkError ? 'Network connection failed. Please check your internet connection.' : 'Invalid code. Please try again.',
+      });
     } finally {
       setIsLoading(false);
       setActiveProvider(null);
@@ -157,20 +182,28 @@ export const useSignIn = () => {
   const handleAgentRegistration = async () => {
     if (username.trim().length < 3) {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-      Alert.alert('ACCESS DENIED', 'Agent codename must be at least 3 characters.');
+      Toast.show({
+        type: 'error',
+        text1: 'REGISTRATION FAILED',
+        text2: 'Username must be at least 3 characters.',
+      });
       return;
     }
 
     const address = client.wallets.primary?.address;
     if (!address) {
-      Alert.alert('ACCESS DENIED', 'No active wallet link established.');
+      Toast.show({
+        type: 'error',
+        text1: 'REGISTRATION FAILED',
+        text2: 'No wallet connection found.',
+      });
       return;
     }
 
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
     setIsLoading(true);
     try {
-      const registerResponse = await fetch(`${BACKEND_URL}/api/player`, {
+      const registerResponse = await fetchWithTimeout(`${BACKEND_URL}/api/player`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -184,7 +217,11 @@ export const useSignIn = () => {
 
       if (registerResponse.status === 400 && registerData.error === 'USERNAME_TAKEN') {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-        Alert.alert('CODENAME COLLISION', 'This agent codename has already been claimed.');
+        Toast.show({
+          type: 'error',
+          text1: 'USERNAME TAKEN',
+          text2: 'This username has already been taken.',
+        });
         return;
       }
 
@@ -203,7 +240,12 @@ export const useSignIn = () => {
     } catch (err: unknown) {
       console.error('Registration failed:', err);
       const errMsg = err instanceof Error ? err.message : 'Failed to register agent. Try again.';
-      Alert.alert('SYSTEM ERROR', errMsg);
+      const isNetworkError = errMsg.includes('Network request failed') || errMsg.includes('fetch');
+      Toast.show({
+        type: 'error',
+        text1: 'REGISTRATION FAILED',
+        text2: isNetworkError ? 'Network connection failed. Please check your internet connection.' : 'Could not register username. Please try again.',
+      });
     } finally {
       setIsLoading(false);
     }
@@ -218,7 +260,12 @@ export const useSignIn = () => {
     } catch (err: unknown) {
       console.error(`Social auth failed for ${provider}:`, err);
       const errMsg = err instanceof Error ? err.message : 'Failed to authenticate.';
-      Alert.alert('AUTHORIZATION FAILURE', errMsg);
+      const isNetworkError = errMsg.includes('Network request failed') || errMsg.includes('fetch');
+      Toast.show({
+        type: 'error',
+        text1: 'SIGN IN FAILED',
+        text2: isNetworkError ? 'Network connection failed. Please check your internet connection.' : 'Could not authenticate. Please try again.',
+      });
     } finally {
       setIsLoading(false);
       setActiveProvider(null);
@@ -234,11 +281,20 @@ export const useSignIn = () => {
       await client.auth.email.resendOTP();
       setResendCountdown(60);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      Alert.alert('TRANSMISSION SUCCESS', 'A new access key has been transmitted.');
+      Toast.show({
+        type: 'success',
+        text1: 'CODE SENT',
+        text2: 'A new verification code has been sent.',
+      });
     } catch (err: unknown) {
       console.error('Failed to resend OTP:', err);
       const errMsg = err instanceof Error ? err.message : 'Failed to resend OTP.';
-      Alert.alert('TRANSMISSION FAILURE', errMsg);
+      const isNetworkError = errMsg.includes('Network request failed') || errMsg.includes('fetch');
+      Toast.show({
+        type: 'error',
+        text1: 'SEND FAILED',
+        text2: isNetworkError ? 'Network connection failed. Please check your internet connection.' : 'Could not resend verification code. Please try again.',
+      });
     } finally {
       setIsLoading(false);
       setActiveProvider(null);
@@ -251,7 +307,11 @@ export const useSignIn = () => {
   const handlePasskeyLogin = async () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     if (!PASSKEY_ENABLED) {
-      Alert.alert('COMING SOON', 'Biometric passkey login will be available in the next update.');
+      Toast.show({
+        type: 'info',
+        text1: 'COMING SOON',
+        text2: 'Passkey login will be available in a future update.',
+      });
       return;
     }
     setIsLoading(true);
@@ -261,7 +321,12 @@ export const useSignIn = () => {
     } catch (err: unknown) {
       console.error('Passkey sign-in failed:', err);
       const errMsg = err instanceof Error ? err.message : 'Passkey auth failed.';
-      Alert.alert('DECRYPTION FAILURE', errMsg);
+      const isNetworkError = errMsg.includes('Network request failed') || errMsg.includes('fetch');
+      Toast.show({
+        type: 'error',
+        text1: 'SIGN IN FAILED',
+        text2: isNetworkError ? 'Network connection failed. Please check your internet connection.' : 'Passkey authentication failed.',
+      });
     } finally {
       setIsLoading(false);
       setActiveProvider(null);

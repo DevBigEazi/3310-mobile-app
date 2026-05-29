@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TouchableOpacity, ActivityIndicator, Alert, Clipboard } from 'react-native';
+import { View, Text, TouchableOpacity, ActivityIndicator, Clipboard } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Haptics from 'expo-haptics';
+import Toast from 'react-native-toast-message';
 import { Ionicons } from '@expo/vector-icons';
 import { useReactiveClient } from '@dynamic-labs/react-hooks';
 import { dynamicClient } from '../../client';
@@ -59,24 +60,44 @@ export default function ProfileScreen(): React.JSX.Element {
     const refLink = `https://play3310.xyz/ref/${profile.referralCode}`;
     Clipboard.setString(refLink);
     setCopiedLink(true);
+    Toast.show({
+      type: 'success',
+      text1: 'LINK COPIED',
+      text2: 'Referral link copied to clipboard.',
+    });
     setTimeout(() => setCopiedLink(false), 2000);
   };
 
   const handleRegisterPasskey = async () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     if (!PASSKEY_ENABLED) {
-      Alert.alert('COMING SOON', 'Biometric passkey login will be available in the next update.');
+      Toast.show({
+        type: 'info',
+        text1: 'COMING SOON',
+        text2: 'Passkey login will be available in a future update.',
+      });
       return;
     }
     setIsRegisteringPasskey(true);
     try {
       await client.passkeys.register();
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      Alert.alert('LINK COMPLETED', 'Biometric passkey has been successfully registered.');
+      Toast.show({
+        type: 'success',
+        text1: 'LINK SUCCESSFUL',
+        text2: 'Biometric passkey has been successfully registered.',
+      });
     } catch (error: any) {
       console.error('Passkey registration failed:', error);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-      Alert.alert('LINK FAILURE', error.message || 'Failed to establish biometric key.');
+      const isNetworkError = error.message?.includes('Network request failed') || error.message?.includes('fetch');
+      Toast.show({
+        type: 'error',
+        text1: 'LINK FAILED',
+        text2: isNetworkError
+          ? 'Network connection failed. Please check your internet connection.'
+          : error.message || 'Failed to establish biometric key.',
+      });
     } finally {
       setIsRegisteringPasskey(false);
     }

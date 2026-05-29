@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { View, Text, TouchableOpacity, ActivityIndicator, GestureResponderEvent, Modal, Share, Dimensions, ScrollView } from 'react-native';
+import { View, Text, TouchableOpacity, ActivityIndicator, GestureResponderEvent, Modal, Share, Dimensions } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Haptics from 'expo-haptics';
 import { Ionicons } from '@expo/vector-icons';
@@ -60,6 +60,9 @@ interface SnakeGameProps {
   weeklyScore: number;
   startGameAttempt: () => Promise<string | null>;
   submitGameScore: (score: number) => Promise<{ isValid: boolean; updatedScore: number } | null>;
+  pendingScore: { gameSessionId: string; score: number } | null;
+  isSyncingPending: boolean;
+  syncPendingScore: () => Promise<void>;
 }
 
 type Direction = 'UP' | 'DOWN' | 'LEFT' | 'RIGHT';
@@ -79,6 +82,9 @@ export default function SnakeGame({
   weeklyScore,
   startGameAttempt,
   submitGameScore,
+  pendingScore,
+  isSyncingPending,
+  syncPendingScore,
 }: SnakeGameProps): React.JSX.Element {
   const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
   // Available height for canvas. Budget: Top Area (~120px) + Bottom Area (~250px) + Padding/Margins (~60px) = ~430px overhead.
@@ -104,7 +110,6 @@ export default function SnakeGame({
   const [controlMode, setControlMode] = useState<'buttons' | 'swipe'>('buttons');
   
   const [avatarName, setAvatarName] = useState<string>('CYAN VIPER');
-  const [avatarColor, setAvatarColor] = useState<string>('#00FFFF');
   const [speed, setSpeed] = useState<number>(INITIAL_SPEED);
   const [avatar, setAvatar] = useState<(typeof AVATARS)[0]>(AVATARS[0]);
 
@@ -131,7 +136,6 @@ export default function SnakeGame({
 
           const selectedAvatar = AVATARS.find(a => a.name === storedName) || AVATARS[0];
           setAvatarName(selectedAvatar.name);
-          setAvatarColor(selectedAvatar.color);
           setAvatar(selectedAvatar);
           setSpeed(INITIAL_SPEED); 
         } catch (error) {
@@ -190,10 +194,11 @@ export default function SnakeGame({
     try {
       const result = await submitGameScore(finalScore);
       if (result) {
-        // Update high score locally if higher
-        if (result.isValid && finalScore > highScore) {
-          setHighScore(finalScore);
-          await AsyncStorage.setItem('snake_high_score', finalScore.toString());
+        // Update cumulative all-time score locally
+        if (result.isValid) {
+          const newHighScore = highScore + finalScore;
+          setHighScore(newHighScore);
+          await AsyncStorage.setItem('snake_high_score', newHighScore.toString());
         }
         
         if (result.isValid) {
@@ -428,7 +433,30 @@ export default function SnakeGame({
                 className="border p-5 rounded-lg items-center w-[85%]"
                 style={{ borderColor: avatar.color, backgroundColor: theme.canvasBg }}
               >
-                {isOutOfLives ? (
+                {pendingScore ? (
+                  <>
+                    <Text className="font-arcade text-[10px] text-warning text-center mb-3 leading-4">
+                      UNSAVED SCORE DETECTED
+                    </Text>
+                    <Text className="font-pixel_regular text-[11px] text-center mb-4" style={{ color: theme.textMuted }}>
+                      Offline score: {pendingScore.score} pts
+                    </Text>
+                    <TouchableOpacity
+                      onPress={syncPendingScore}
+                      disabled={isSyncingPending}
+                      className="px-6 py-2.5 rounded border mb-2 w-full items-center"
+                      style={{ backgroundColor: '#FFFF00', borderColor: '#FFFF00' }}
+                    >
+                      {isSyncingPending ? (
+                        <ActivityIndicator size="small" color={theme.bg} />
+                      ) : (
+                        <Text className="font-pixel_bold text-xs" style={{ color: theme.bg }}>
+                          SUBMIT SCORE
+                        </Text>
+                      )}
+                    </TouchableOpacity>
+                  </>
+                ) : isOutOfLives ? (
                   <>
                     <Text className="font-arcade leading-7 text-sm text-destructive text-center mb-3">
                       Out of Lives
@@ -495,7 +523,7 @@ export default function SnakeGame({
                   <View className="flex-row items-center gap-2">
                     <ActivityIndicator size="small" color="#00ff00" />
                     <Text className="font-pixel_regular text-xs" style={{ color: avatar.color }}>
-                      Syncing score...
+                      Saving score...
                     </Text>
                   </View>
                 ) : (
@@ -741,21 +769,11 @@ export default function SnakeGame({
  
             <TouchableOpacity
               onPress={() => handleShare('native')}
-              className="py-3.5 rounded-xl mb-3"
-              style={{ backgroundColor: avatar.color }}
-            >
-              <Text className="font-pixel_bold text-center text-xs" style={{ color: theme.bg }}>
-                SHARE PERFORMANCE
-              </Text>
-            </TouchableOpacity>
- 
-            <TouchableOpacity
-              onPress={() => handleShare('twitter')}
               className="py-3.5 rounded-xl mb-2"
               style={{ backgroundColor: '#1DA1F2' }}
             >
               <Text className="font-pixel_bold text-white text-center text-xs">
-                SHARE ON X
+                SHARE SCORE
               </Text>
             </TouchableOpacity>
  
