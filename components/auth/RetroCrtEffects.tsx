@@ -10,7 +10,13 @@ import Animated, {
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 
-export default function RetroCrtEffects(): React.JSX.Element {
+export default function RetroCrtEffects({ 
+  bezelColor = '#0A0E27',
+  bezelWidth = 10
+}: { 
+  bezelColor?: string;
+  bezelWidth?: number;
+}): React.JSX.Element {
   const scanBarY = useSharedValue(-50);
 
   useEffect(() => {
@@ -41,7 +47,9 @@ export default function RetroCrtEffects(): React.JSX.Element {
       <Animated.View style={[scanBarAnimatedStyle, styles.scanBar]} />
       
       {/* Screen Bezel shadow */}
-      <View style={styles.bezelShadow} />
+      {bezelWidth > 0 && (
+        <View style={[styles.bezelShadow, { borderColor: bezelColor, borderWidth: bezelWidth }]} />
+      )}
     </View>
   );
 }
