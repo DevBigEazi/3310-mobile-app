@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { View, Text, TouchableOpacity, ActivityIndicator, Clipboard } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
+import { useRouter, useFocusEffect } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Haptics from 'expo-haptics';
 import Toast from 'react-native-toast-message';
@@ -17,9 +17,17 @@ export default function ProfileScreen(): React.JSX.Element {
   const client = useReactiveClient(dynamicClient);
   const address = client.wallets.primary?.address;
   
-  const { data: profileData, isLoading } = usePlayerProfile(address);
+  const { data: profileData, isLoading, refetch } = usePlayerProfile(address);
   const profile = profileData?.player || null;
   const stats = profileData?.stats || null;
+
+  useFocusEffect(
+    useCallback(() => {
+      if (address) {
+        refetch();
+      }
+    }, [refetch, address])
+  );
 
   const [isRegisteringPasskey, setIsRegisteringPasskey] = useState<boolean>(false);
   const [copiedLink, setCopiedLink] = useState<boolean>(false);
